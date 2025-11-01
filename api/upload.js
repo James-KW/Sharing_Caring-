@@ -1,8 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 
-// File-based storage (/tmp directory in Vercel)
+// File-based storage in /tmp directory (works in Vercel)
 const STORAGE_FILE = '/tmp/file_storage.json';
+
+// Initialize storage file if it doesn't exist
+function initStorage() {
+    try {
+        if (!fs.existsSync(STORAGE_FILE)) {
+            fs.writeFileSync(STORAGE_FILE, JSON.stringify({}));
+            console.log('Storage file initialized');
+        }
+    } catch (error) {
+        console.error('Error initializing storage:', error);
+    }
+}
 
 function readStorage() {
     try {
@@ -26,6 +38,34 @@ function writeStorage(storage) {
     }
 }
 
+// Clean up old files (older than 24 hours)
+function cleanupOldFiles() {
+    try {
+        const storage = readStorage();
+        const now = new Date();
+        let changed = false;
+        
+        for (const fileId in storage) {
+            const fileInfo = storage[fileId];
+            const uploadTime = new Date(fileInfo.uploadTime);
+            const hoursDiff = (now - uploadTime) / (1000 * 60 * 60);
+            
+            // Delete files older than 24 hours or already downloaded
+            if (hoursDiff > 24 || fileInfo.downloaded) {
+                delete storage[fileId];
+                changed = true;
+                console.log(`Cleaned up file: ${fileId}`);
+            }
+        }
+        
+        if (changed) {
+            writeStorage(storage);
+        }
+    } catch (error) {
+        console.error('Cleanup error:', error);
+    }
+}
+
 module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -43,6 +83,12 @@ module.exports = async (req, res) => {
     }
 
     try {
+        // Initialize storage
+        initStorage();
+        
+        // Clean up old files first
+        cleanupOldFiles();
+
         const chunks = [];
         for await (const chunk of req) {
             chunks.push(chunk);
@@ -65,19 +111,21 @@ module.exports = async (req, res) => {
         // Read current storage
         const storage = readStorage();
         
-        // Store file info (we'll store the file data as base64)
+        // Store file info
         storage[fileId] = {
             fileName: fileName,
-            fileData: buffer.toString('base64'), // Store as base64
+            fileData: buffer.toString('base64'),
             fileSize: fileSize,
             uploadTime: new Date().toISOString(),
             downloaded: false,
-            downloadCount: 0
+            downloadCount: 0,
+            mimeType: req.headers['content-type'] || 'application/octet-stream'
         };
         
         // Write back to storage
         if (writeStorage(storage)) {
-            console.log(`File uploaded: ${fileName} (${fileId}) - Size: ${fileSize} bytes`);
+            console.log(`✅ File uploaded: ${fileName} (${fileId}) - Size: ${fileSize} bytes`);
+            console.log(`📁 Total files in storage: ${Object.keys(storage).length}`);
             
             res.status(200).json({
                 success: true,
@@ -86,11 +134,11 @@ module.exports = async (req, res) => {
                 downloadUrl: `/api/download/${fileId}`
             });
         } else {
-            throw new Error('Failed to save file');
+            throw new Error('Failed to save file to storage');
         }
         
     } catch (error) {
-        console.error('Upload error:', error);
+        console.error('❌ Upload error:', error);
         res.status(500).json({
             success: false,
             message: 'Upload failed: ' + error.message
@@ -99,6 +147,5 @@ module.exports = async (req, res) => {
 };
 
 function generateFileId() {
-    return Math.random().toString(36).substring(2, 10) + 
-           Math.random().toString(36).substring(2, 10);
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 }

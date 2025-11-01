@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// File-based storage (/tmp directory in Vercel)
+// File-based storage in /tmp directory
 const STORAGE_FILE = '/tmp/file_storage.json';
 
 function readStorage() {
@@ -26,33 +26,6 @@ function writeStorage(storage) {
     }
 }
 
-function cleanupOldFiles() {
-    try {
-        const storage = readStorage();
-        const now = new Date();
-        let changed = false;
-        
-        for (const fileId in storage) {
-            const fileInfo = storage[fileId];
-            const uploadTime = new Date(fileInfo.uploadTime);
-            const hoursDiff = (now - uploadTime) / (1000 * 60 * 60);
-            
-            // Delete files older than 24 hours
-            if (hoursDiff > 24) {
-                delete storage[fileId];
-                changed = true;
-                console.log(`Cleaned up old file: ${fileId}`);
-            }
-        }
-        
-        if (changed) {
-            writeStorage(storage);
-        }
-    } catch (error) {
-        console.error('Cleanup error:', error);
-    }
-}
-
 module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -72,31 +45,35 @@ module.exports = async (req, res) => {
     try {
         // Extract fileId from URL
         const pathParts = req.url.split('/');
-        const fileId = pathParts[pathParts.length - 1];
+        let fileId = pathParts[pathParts.length - 1];
         
-        console.log('Download request for fileId:', fileId);
+        // Remove any query parameters
+        fileId = fileId.split('?')[0];
         
-        // Clean up old files first
-        cleanupOldFiles();
+        console.log('🔍 Download request for fileId:', fileId);
         
         // Read storage
         const storage = readStorage();
+        console.log('📁 Files in storage:', Object.keys(storage));
         
         // Check if file exists
         const fileInfo = storage[fileId];
         if (!fileInfo) {
-            console.log('File not found:', fileId);
+            console.log('❌ File not found in storage:', fileId);
+            console.log('📋 Available files:', Object.keys(storage));
             return res.status(404).json({
                 success: false,
                 message: 'File not found or link has expired'
             });
         }
         
-        // Check if already downloaded (one-time download)
+        console.log('✅ File found:', fileInfo.fileName);
+        
+        // Check if already downloaded
         if (fileInfo.downloaded) {
-            console.log('File already downloaded:', fileId);
+            console.log('🚫 File already downloaded, deleting:', fileId);
             
-            // Delete the file after first download
+            // Delete the file after download
             delete storage[fileId];
             writeStorage(storage);
             
@@ -108,8 +85,8 @@ module.exports = async (req, res) => {
         
         // Mark as downloaded
         fileInfo.downloaded = true;
-        fileInfo.downloadCount = (fileInfo.downloadCount || 0) + 1;
-        fileInfo.lastDownloadTime = new Date().toISOString();
+        fileInfo.downloadCount = 1;
+        fileInfo.downloadTime = new Date().toISOString();
         storage[fileId] = fileInfo;
         
         // Write updated storage
@@ -120,20 +97,22 @@ module.exports = async (req, res) => {
         // Convert base64 back to buffer
         const fileBuffer = Buffer.from(fileInfo.fileData, 'base64');
         
-        // Set headers for file download
-        res.setHeader('Content-Type', 'application/octet-stream');
+        // Set appropriate headers
+        const mimeType = fileInfo.mimeType || 'application/octet-stream';
+        res.setHeader('Content-Type', mimeType);
         res.setHeader('Content-Disposition', `attachment; filename="${fileInfo.fileName}"`);
         res.setHeader('Content-Length', fileInfo.fileSize);
         res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('X-File-Name', encodeURIComponent(fileInfo.fileName));
         
         // Send the file data
         res.write(fileBuffer);
         res.end();
         
-        console.log(`File downloaded successfully: ${fileInfo.fileName} (${fileId})`);
+        console.log(`✅ File downloaded successfully: ${fileInfo.fileName} (${fileId})`);
         
     } catch (error) {
-        console.error('Download error:', error);
+        console.error('❌ Download error:', error);
         res.status(500).json({
             success: false,
             message: 'Download failed: ' + error.message
