@@ -13,6 +13,10 @@
     {
       "src": "api/download.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/status.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -28,6 +32,11 @@
     {
       "src": "/api/download/(.*)",
       "dest": "/api/download.js",
+      "methods": ["GET", "OPTIONS"]
+    },
+    {
+      "src": "/api/status",
+      "dest": "/api/status.js",
       "methods": ["GET", "OPTIONS"]
     }
   ]
