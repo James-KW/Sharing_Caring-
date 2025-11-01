@@ -12,6 +12,7 @@
             --light: #f9f9f9;
             --success: #2ecc71;
             --danger: #e74c3c;
+            --warning: #ff9800;
         }
         
         * {
@@ -167,6 +168,7 @@
             border-radius: 5px 0 0 5px;
             font-size: 1rem;
             background-color: white;
+            cursor: pointer;
         }
         
         .copy-btn {
@@ -177,6 +179,7 @@
             border-radius: 0 5px 5px 0;
             cursor: pointer;
             transition: background 0.3s;
+            font-weight: 600;
         }
         
         .copy-btn:hover {
@@ -231,29 +234,36 @@
         }
         
         .status-message {
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
             text-align: center;
             display: none;
+            font-weight: 500;
         }
         
         .status-success {
-            background-color: rgba(46, 204, 113, 0.2);
+            background-color: rgba(46, 204, 113, 0.15);
             color: var(--success);
             border: 1px solid var(--success);
         }
         
         .status-error {
-            background-color: rgba(231, 76, 60, 0.2);
+            background-color: rgba(231, 76, 60, 0.15);
             color: var(--danger);
             border: 1px solid var(--danger);
         }
         
         .status-uploading {
-            background-color: rgba(255, 193, 7, 0.2);
-            color: #ff9800;
-            border: 1px solid #ff9800;
+            background-color: rgba(255, 193, 7, 0.15);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+        
+        .file-types {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 10px;
         }
         
         @media (max-width: 600px) {
@@ -278,6 +288,14 @@
                 border-radius: 5px;
                 padding: 12px;
             }
+            
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .upload-text {
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
@@ -292,9 +310,10 @@
             <div class="upload-section" id="uploadSection">
                 <div class="upload-icon">📁</div>
                 <p class="upload-text">Drag & drop files here or click to upload</p>
-                <input type="file" id="fileInput" class="file-input">
+                <input type="file" id="fileInput" class="file-input" accept="*/*">
                 <button class="upload-btn" id="uploadButton">Select File</button>
                 <p class="file-info" id="fileInfo">No file selected</p>
+                <p class="file-types">Supports: Images, Documents, PDFs, Videos (Max 10MB)</p>
                 
                 <div class="progress-bar" id="progressBar">
                     <div class="progress" id="progress"></div>
@@ -304,36 +323,36 @@
             </div>
             
             <div class="link-section" id="linkSection">
-                <h3>Your file is ready to share!</h3>
+                <h3>🎉 Your file is ready to share!</h3>
                 <div class="link-container">
-                    <input type="text" id="shareLink" class="link-input" readonly>
+                    <input type="text" id="shareLink" class="link-input" readonly placeholder="Generating link...">
                     <button class="copy-btn" id="copyButton">Copy</button>
                 </div>
-                <p class="expiry-info">This link will expire after one download and is valid for 24 hours.</p>
+                <p class="expiry-info">⚠️ This link will expire after one download and is valid for 24 hours.</p>
             </div>
             
             <div class="features">
                 <div class="feature">
                     <div class="feature-icon">🔒</div>
-                    <h3>Secure</h3>
-                    <p>Files are automatically deleted after download</p>
+                    <h3>Secure & Private</h3>
+                    <p>Files are automatically deleted after download. No permanent storage.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">⚡</div>
-                    <h3>Fast</h3>
-                    <p>Quick upload and sharing process</p>
+                    <h3>Fast Transfer</h3>
+                    <p>Quick upload and sharing process with instant link generation.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">📱</div>
-                    <h3>Easy</h3>
-                    <p>Simple interface for all users</p>
+                    <h3>Easy to Use</h3>
+                    <p>Simple interface that works on all devices - no registration required.</p>
                 </div>
             </div>
         </div>
     </div>
     
     <footer>
-        <p>QuickShare &copy; 2023 | Files are stored temporarily and deleted after download</p>
+        <p>QuickShare &copy; 2023 | Your files are safe with us - automatically deleted after download</p>
     </footer>
 
     <script>
@@ -358,9 +377,9 @@
                 if (fileInput.files.length > 0) {
                     const file = fileInput.files[0];
                     
-                    // Check file size (max 10MB for demo)
+                    // Check file size (max 10MB)
                     if (file.size > 10 * 1024 * 1024) {
-                        showStatus('File size exceeds 10MB limit. Please choose a smaller file.', 'error');
+                        showStatus('❌ File size exceeds 10MB limit. Please choose a smaller file.', 'error');
                         return;
                     }
                     
@@ -388,9 +407,9 @@
                 if (e.dataTransfer.files.length > 0) {
                     const file = e.dataTransfer.files[0];
                     
-                    // Check file size (max 10MB for demo)
+                    // Check file size (max 10MB)
                     if (file.size > 10 * 1024 * 1024) {
-                        showStatus('File size exceeds 10MB limit. Please choose a smaller file.', 'error');
+                        showStatus('❌ File size exceeds 10MB limit. Please choose a smaller file.', 'error');
                         return;
                     }
                     
@@ -407,7 +426,7 @@
                 
                 // Show progress bar
                 progressBar.style.display = 'block';
-                showStatus('Uploading file...', 'uploading');
+                showStatus('⏳ Uploading your file... Please wait.', 'uploading');
                 
                 try {
                     // Read file as array buffer
@@ -416,9 +435,9 @@
                     // Simulate upload progress
                     let progressValue = 0;
                     const progressInterval = setInterval(() => {
-                        progressValue += Math.random() * 10;
-                        if (progressValue >= 90) {
-                            progressValue = 90;
+                        progressValue += Math.random() * 15;
+                        if (progressValue >= 85) {
+                            progressValue = 85;
                             clearInterval(progressInterval);
                         }
                         progress.style.width = `${progressValue}%`;
@@ -428,7 +447,7 @@
                     const response = await fetch('/api/upload', {
                         method: 'POST',
                         headers: {
-                            'File-Name': file.name,
+                            'File-Name': encodeURIComponent(file.name),
                             'Content-Type': 'application/octet-stream',
                             'Content-Length': file.size.toString()
                         },
@@ -438,25 +457,32 @@
                     const result = await response.json();
                     
                     if (result.success) {
+                        // Complete progress bar
                         progress.style.width = '100%';
                         
                         setTimeout(() => {
                             progressBar.style.display = 'none';
                             uploadButton.disabled = false;
-                            uploadButton.textContent = 'Select File';
+                            uploadButton.textContent = 'Select Another File';
                             
                             // Generate shareable link
-                            shareLink.value = `${window.location.origin}${result.downloadUrl}`;
+                            const downloadUrl = result.downloadUrl || `/api/download/${result.fileId}`;
+                            shareLink.value = `${window.location.origin}${downloadUrl}`;
                             
                             // Show the link section
                             linkSection.style.display = 'block';
                             
                             // Show success message
-                            showStatus('File uploaded successfully! Share the link with your friend.', 'success');
+                            showStatus('✅ File uploaded successfully! Copy the link and share it with your friend.', 'success');
                             
                             // Scroll to the link section
-                            linkSection.scrollIntoView({ behavior: 'smooth' });
-                        }, 500);
+                            linkSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            
+                            // Reset file input
+                            fileInput.value = '';
+                            fileInfo.textContent = 'Ready to upload another file';
+                            
+                        }, 800);
                     } else {
                         throw new Error(result.message || 'Upload failed');
                     }
@@ -465,40 +491,57 @@
                     progressBar.style.display = 'none';
                     uploadButton.disabled = false;
                     uploadButton.textContent = 'Select File';
-                    showStatus(`Upload failed: ${error.message}`, 'error');
+                    showStatus(`❌ Upload failed: ${error.message}`, 'error');
                 }
             }
             
             // Copy link to clipboard
             copyButton.addEventListener('click', function() {
-                shareLink.select();
-                shareLink.setSelectionRange(0, 99999); // For mobile devices
+                if (!shareLink.value || shareLink.value === 'Generating link...') {
+                    showStatus('❌ Please wait for the link to be generated.', 'error');
+                    return;
+                }
                 
-                try {
-                    // Use modern clipboard API
+                shareLink.select();
+                shareLink.setSelectionRange(0, 99999);
+                
+                // Try modern clipboard API first
+                if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(shareLink.value).then(function() {
-                        // Visual feedback
-                        const originalText = copyButton.textContent;
-                        copyButton.textContent = 'Copied!';
-                        copyButton.style.background = 'var(--success)';
-                        
-                        showStatus('Link copied to clipboard!', 'success');
-                        
-                        setTimeout(function() {
-                            copyButton.textContent = originalText;
-                            copyButton.style.background = 'var(--primary)';
-                        }, 2000);
+                        showCopySuccess();
                     }).catch(function() {
-                        // Fallback for older browsers
-                        document.execCommand('copy');
-                        showStatus('Link copied to clipboard!', 'success');
+                        fallbackCopy();
                     });
-                } catch (err) {
-                    // Final fallback
-                    document.execCommand('copy');
-                    showStatus('Link copied to clipboard!', 'success');
+                } else {
+                    fallbackCopy();
                 }
             });
+            
+            function fallbackCopy() {
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        showCopySuccess();
+                    } else {
+                        showStatus('❌ Failed to copy link. Please copy manually.', 'error');
+                    }
+                } catch (err) {
+                    showStatus('❌ Failed to copy link. Please copy manually.', 'error');
+                }
+            }
+            
+            function showCopySuccess() {
+                const originalText = copyButton.textContent;
+                copyButton.textContent = '✅ Copied!';
+                copyButton.style.background = 'var(--success)';
+                
+                showStatus('📋 Link copied to clipboard! Send it to your friend.', 'success');
+                
+                setTimeout(function() {
+                    copyButton.textContent = originalText;
+                    copyButton.style.background = 'var(--primary)';
+                }, 3000);
+            }
             
             // Show status message
             function showStatus(message, type) {
@@ -507,11 +550,22 @@
                 statusMessage.classList.add(`status-${type}`);
                 statusMessage.style.display = 'block';
                 
-                // Auto-hide success messages after 5 seconds
+                // Auto-hide success messages after 6 seconds
                 if (type === 'success') {
                     setTimeout(() => {
-                        statusMessage.style.display = 'none';
-                    }, 5000);
+                        if (statusMessage.textContent === message) {
+                            statusMessage.style.display = 'none';
+                        }
+                    }, 6000);
+                }
+                
+                // Auto-hide error messages after 8 seconds
+                if (type === 'error') {
+                    setTimeout(() => {
+                        if (statusMessage.textContent === message) {
+                            statusMessage.style.display = 'none';
+                        }
+                    }, 8000);
                 }
             }
             
@@ -524,10 +578,24 @@
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
             
-            // Add click to open link functionality
+            // Add click to select link functionality
             shareLink.addEventListener('click', function() {
                 this.select();
             });
+            
+            // Prevent drag and drop default behavior
+            document.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('drop', function(e) {
+                e.preventDefault();
+            });
+            
+            // Show welcome message
+            setTimeout(() => {
+                showStatus('👋 Welcome to QuickShare! Drag and drop any file to get started.', 'success');
+            }, 1000);
         });
     </script>
 </body>
