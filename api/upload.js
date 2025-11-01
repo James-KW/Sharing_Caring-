@@ -1,9 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-// In-memory storage for demo (use database in production)
-let fileStorage = new Map();
-let downloadCounts = new Map();
+// Simple in-memory storage (resets on server restart)
+const fileStorage = new Map();
+const downloadCounts = new Map();
 
 module.exports = async (req, res) => {
   // Enable CORS
@@ -23,17 +23,32 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // In a real implementation, you'd parse the multipart form data
-    // For this demo, we'll simulate file processing
+    // Get file data from request
+    const chunks = [];
     
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+    
+    const buffer = Buffer.concat(chunks);
+    
+    // Check if file data exists
+    if (buffer.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No file data received' 
+      });
+    }
+
     // Generate unique file ID
     const fileId = generateFileId();
-    const fileName = req.headers['file-name'] || 'file';
-    const fileSize = parseInt(req.headers['content-length']) || 0;
+    const fileName = req.headers['file-name'] || `file-${fileId}`;
+    const fileSize = buffer.length;
     
-    // Store file info (in production, save to database and file to cloud storage)
+    // Store file info
     fileStorage.set(fileId, {
       fileName: fileName,
+      fileData: buffer,
       fileSize: fileSize,
       uploadTime: new Date().toISOString(),
       downloaded: false
@@ -41,7 +56,7 @@ module.exports = async (req, res) => {
     
     downloadCounts.set(fileId, 0);
     
-    console.log(`File uploaded: ${fileName} (${fileId})`);
+    console.log(`File uploaded: ${fileName} (${fileId}) - Size: ${fileSize} bytes`);
     
     res.status(200).json({
       success: true,
