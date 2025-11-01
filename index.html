@@ -250,6 +250,12 @@
             border: 1px solid var(--danger);
         }
         
+        .status-uploading {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #ff9800;
+            border: 1px solid #ff9800;
+        }
+        
         @media (max-width: 600px) {
             .features {
                 flex-direction: column;
@@ -401,11 +407,11 @@
                 
                 // Show progress bar
                 progressBar.style.display = 'block';
+                showStatus('Uploading file...', 'uploading');
                 
                 try {
-                    // Create FormData
-                    const formData = new FormData();
-                    formData.append('file', file);
+                    // Read file as array buffer
+                    const arrayBuffer = await file.arrayBuffer();
                     
                     // Simulate upload progress
                     let progressValue = 0;
@@ -421,7 +427,12 @@
                     // Upload to API
                     const response = await fetch('/api/upload', {
                         method: 'POST',
-                        body: formData
+                        headers: {
+                            'File-Name': file.name,
+                            'Content-Type': 'application/octet-stream',
+                            'Content-Length': file.size.toString()
+                        },
+                        body: arrayBuffer
                     });
                     
                     const result = await response.json();
@@ -435,7 +446,7 @@
                             uploadButton.textContent = 'Select File';
                             
                             // Generate shareable link
-                            shareLink.value = `${window.location.origin}/api/download/${result.fileId}`;
+                            shareLink.value = `${window.location.origin}${result.downloadUrl}`;
                             
                             // Show the link section
                             linkSection.style.display = 'block';
@@ -450,6 +461,7 @@
                         throw new Error(result.message || 'Upload failed');
                     }
                 } catch (error) {
+                    console.error('Upload error:', error);
                     progressBar.style.display = 'none';
                     uploadButton.disabled = false;
                     uploadButton.textContent = 'Select File';
@@ -460,19 +472,32 @@
             // Copy link to clipboard
             copyButton.addEventListener('click', function() {
                 shareLink.select();
-                document.execCommand('copy');
+                shareLink.setSelectionRange(0, 99999); // For mobile devices
                 
-                // Visual feedback
-                const originalText = copyButton.textContent;
-                copyButton.textContent = 'Copied!';
-                copyButton.style.background = 'var(--success)';
-                
-                showStatus('Link copied to clipboard!', 'success');
-                
-                setTimeout(function() {
-                    copyButton.textContent = originalText;
-                    copyButton.style.background = 'var(--primary)';
-                }, 2000);
+                try {
+                    // Use modern clipboard API
+                    navigator.clipboard.writeText(shareLink.value).then(function() {
+                        // Visual feedback
+                        const originalText = copyButton.textContent;
+                        copyButton.textContent = 'Copied!';
+                        copyButton.style.background = 'var(--success)';
+                        
+                        showStatus('Link copied to clipboard!', 'success');
+                        
+                        setTimeout(function() {
+                            copyButton.textContent = originalText;
+                            copyButton.style.background = 'var(--primary)';
+                        }, 2000);
+                    }).catch(function() {
+                        // Fallback for older browsers
+                        document.execCommand('copy');
+                        showStatus('Link copied to clipboard!', 'success');
+                    });
+                } catch (err) {
+                    // Final fallback
+                    document.execCommand('copy');
+                    showStatus('Link copied to clipboard!', 'success');
+                }
             });
             
             // Show status message
@@ -482,9 +507,12 @@
                 statusMessage.classList.add(`status-${type}`);
                 statusMessage.style.display = 'block';
                 
-                setTimeout(() => {
-                    statusMessage.style.display = 'none';
-                }, 5000);
+                // Auto-hide success messages after 5 seconds
+                if (type === 'success') {
+                    setTimeout(() => {
+                        statusMessage.style.display = 'none';
+                    }, 5000);
+                }
             }
             
             // Helper function to format file size
@@ -495,6 +523,11 @@
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
+            
+            // Add click to open link functionality
+            shareLink.addEventListener('click', function() {
+                this.select();
+            });
         });
     </script>
 </body>
