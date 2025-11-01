@@ -1,3 +1,7 @@
+// In-memory storage (same as upload.js)
+const fileStorage = new Map();
+const downloadCounts = new Map();
+
 module.exports = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -16,16 +20,16 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { query } = req;
-    const fileId = req.url.split('/').pop();
+    // Extract fileId from URL
+    const pathParts = req.url.split('/');
+    const fileId = pathParts[pathParts.length - 1];
     
-    // In production, get from database
-    const fileStorage = new Map(); // This would be your actual storage
-    const downloadCounts = new Map();
+    console.log('Download request for fileId:', fileId);
     
     // Check if file exists
     const fileInfo = fileStorage.get(fileId);
     if (!fileInfo) {
+      console.log('File not found:', fileId);
       return res.status(404).json({
         success: false,
         message: 'File not found or link has expired'
@@ -34,6 +38,7 @@ module.exports = async (req, res) => {
     
     // Check if already downloaded
     if (fileInfo.downloaded) {
+      console.log('File already downloaded:', fileId);
       return res.status(410).json({
         success: false,
         message: 'This file has already been downloaded and the link has expired'
@@ -44,25 +49,26 @@ module.exports = async (req, res) => {
     fileInfo.downloaded = true;
     fileStorage.set(fileId, fileInfo);
     
-    // In production, you would:
-    // 1. Get the actual file from cloud storage
-    // 2. Set appropriate headers for download
-    // 3. Stream the file to the response
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileInfo.fileName}"`);
+    res.setHeader('Content-Length', fileInfo.fileSize);
+    res.setHeader('Cache-Control', 'no-cache');
     
-    console.log(`File downloaded: ${fileInfo.fileName} (${fileId})`);
+    // Send the file data
+    res.write(fileInfo.fileData);
+    res.end();
     
-    // For demo purposes, return file info
-    res.setHeader('Content-Type', 'application/json');
-    res.status(200).json({
-      success: true,
-      message: 'File download initiated',
-      fileInfo: {
-        name: fileInfo.fileName,
-        size: fileInfo.fileSize,
-        uploaded: fileInfo.uploadTime
-      },
-      note: 'In production, this would serve the actual file'
-    });
+    console.log(`File downloaded successfully: ${fileInfo.fileName} (${fileId})`);
+    
+    // Delete file after 1 hour (optional cleanup)
+    setTimeout(() => {
+      if (fileStorage.has(fileId)) {
+        fileStorage.delete(fileId);
+        downloadCounts.delete(fileId);
+        console.log(`File cleaned up: ${fileId}`);
+      }
+    }, 60 * 60 * 1000); // 1 hour
     
   } catch (error) {
     console.error('Download error:', error);
